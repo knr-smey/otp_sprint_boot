@@ -9,6 +9,7 @@ public class SpringBootProjectApiApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(SpringBootProjectApiApplication.class, args);
 		System.out.println("Spring Boot Project API is running...");
+		System.out.print("Login");
 	}
 
 }
