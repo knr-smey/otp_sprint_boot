@@ -12,6 +12,7 @@ public class SpringBootProjectApiApplication {
 		System.out.println("Register");
 		System.out.println("Spring Boot Project API is running...");
 		System.out.print("Login");
+		System.out.println("Spring Boot..");
 	}
 
 }
