@@ -13,6 +13,7 @@ public class SpringBootProjectApiApplication {
 		System.out.println("Spring Boot Project API is running...");
 		System.out.print("Login");
 		System.out.println("Spring Boot..");
+		System.out.println("I love you");
 	}
 
 }
