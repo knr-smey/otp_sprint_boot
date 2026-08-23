@@ -10,6 +10,7 @@ public class SpringBootProjectApiApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(SpringBootProjectApiApplication.class, args);
+		System.out.println("User B is developing");
 	}
 
 }
