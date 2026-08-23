@@ -2,9 +2,8 @@ package com.example.spring_boot_project_api.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -16,31 +15,34 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * One-time recovery code for 2FA. Only the {@link #codeHash BCrypt hash} is stored;
- * {@code usedAt != null} marks a consumed (single-use) code.
+ * The user's current pending login OTP. Only the BCrypt hash is stored - the plaintext
+ * code exists solely inside the outgoing email. A new send overwrites the previous row,
+ * so exactly one code is ever outstanding per user.
  */
 @Entity
-@Table(name = "two_factor_backup_code")
+@Table(name = "user_email_otp")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class BackupCode {
+public class EmailOtp {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
-
 	@Column(name = "user_id", nullable = false)
 	private Long userId;
 
 	@Column(name = "code_hash", nullable = false, length = 255)
 	private String codeHash;
 
-	@Column(name = "used_at")
-	private LocalDateTime usedAt;
+	@Column(name = "expires_at", nullable = false)
+	private LocalDateTime expiresAt;
 
-	@Column(name = "created_at", nullable = false)
-	private LocalDateTime createdAt;
+	@Column(name = "sent_at", nullable = false)
+	private LocalDateTime sentAt;
+
+	@PreUpdate
+	void onUpdate() {
+		sentAt = LocalDateTime.now();
+	}
 }

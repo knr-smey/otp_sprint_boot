@@ -22,21 +22,15 @@ public class GlobalExceptionHandler {
 		return build(HttpStatus.UNAUTHORIZED, ex);
 	}
 
-	@ExceptionHandler(InvalidTwoFactorCodeException.class)
-	public ResponseEntity<ApiErrorResponse> handleInvalidTwoFactorCode(InvalidTwoFactorCodeException ex) {
-		return build(HttpStatus.UNAUTHORIZED, ex);
-	}
-
-	@ExceptionHandler(TwoFactorLockedException.class)
-	public ResponseEntity<ApiErrorResponse> handleTwoFactorLocked(TwoFactorLockedException ex) {
+	@ExceptionHandler(OtpLockedException.class)
+	public ResponseEntity<ApiErrorResponse> handleOtpLocked(OtpLockedException ex) {
 		return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
 				.header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
 				.body(new ApiErrorResponse(HttpStatus.TOO_MANY_REQUESTS.value(),
 						HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(), ex.getMessage(), Instant.now()));
 	}
 
-	@ExceptionHandler({DuplicateUsernameException.class, TwoFactorAlreadyEnabledException.class,
-			TwoFactorNotEnabledException.class, TwoFactorSetupNotFoundException.class})
+	@ExceptionHandler({DuplicateUsernameException.class, DuplicateEmailException.class})
 	public ResponseEntity<ApiErrorResponse> handleConflict(RuntimeException ex) {
 		return build(HttpStatus.CONFLICT, ex);
 	}

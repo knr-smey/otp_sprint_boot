@@ -21,6 +21,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -47,9 +48,11 @@ public class JwtServiceImpl implements JwtService {
 		JWK jwk = new OctetSequenceKey.Builder(key).keyID("hmac-signing-key").build();
 		JWKSource<SecurityContext> jwks = new ImmutableJWKSet<>(new JWKSet(jwk));
 		this.encoder = new NimbusJwtEncoder(jwks);
-		this.decoder = NimbusJwtDecoder.withSecretKey(key)
+		NimbusJwtDecoder nimbusDecoder = NimbusJwtDecoder.withSecretKey(key)
 				.macAlgorithm(MacAlgorithm.HS256)
 				.build();
+		nimbusDecoder.setJwtValidator(new JwtTimestampValidator(Duration.ZERO));
+		this.decoder = nimbusDecoder;
 	}
 
 	@Override
@@ -88,8 +91,8 @@ public class JwtServiceImpl implements JwtService {
 	}
 
 	@Override
-	public String generateTwoFactorPendingToken(User user) {
-		return encode(user, TokenType.TWO_FACTOR_PENDING, props.twoFactorPendingTtl());
+	public String generateOtpPendingToken(User user) {
+		return encode(user, TokenType.OTP_PENDING, props.otpPendingTtl());
 	}
 
 	private String encode(User user, TokenType type, Duration ttl) {

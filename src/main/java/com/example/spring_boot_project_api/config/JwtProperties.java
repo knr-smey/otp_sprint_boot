@@ -11,7 +11,7 @@ public record JwtProperties(
 		String issuer,
 		Duration accessTokenTtl,
 		Duration refreshTokenTtl,
-		Duration twoFactorPendingTtl) {
+		Duration otpPendingTtl) {
 
 	public JwtProperties {
 		if (secret == null || secret.length() < 32) {
@@ -24,8 +24,8 @@ public record JwtProperties(
 		if (refreshTokenTtl == null || refreshTokenTtl.isNegative() || refreshTokenTtl.isZero()) {
 			refreshTokenTtl = Duration.ofDays(7);
 		}
-		if (twoFactorPendingTtl == null || twoFactorPendingTtl.isNegative() || twoFactorPendingTtl.isZero()) {
-			twoFactorPendingTtl = Duration.ofMinutes(5);
+		if (otpPendingTtl == null || otpPendingTtl.isNegative() || otpPendingTtl.isZero()) {
+			otpPendingTtl = Duration.ofMinutes(5);
 		}
 	}
 }

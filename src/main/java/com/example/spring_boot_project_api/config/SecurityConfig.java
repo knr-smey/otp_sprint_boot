@@ -43,7 +43,8 @@ public class SecurityConfig {
 								"/auth/register",
 								"/auth/login",
 								"/auth/refresh",
-								"/auth/2fa/verify").permitAll()
+								"/auth/otp/send",
+								"/auth/otp/verify").permitAll()
 						.requestMatchers(
 								"/v3/api-docs/**",
 								"/swagger-ui/**",

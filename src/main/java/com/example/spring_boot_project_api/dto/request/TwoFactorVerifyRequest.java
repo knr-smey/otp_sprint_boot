@@ -13,6 +13,6 @@ public record TwoFactorVerifyRequest(
 		String temporaryToken,
 
 		@NotBlank
-		@Pattern(regexp = "^\\d{6}$", message = "must be exactly 6 digits")
+		@Pattern(regexp = "^(\\d{6}|[A-Z2-9]{4}-[A-Z2-9]{4})$", message = "must be a 6-digit code or a backup code (XXXX-XXXX)")
 		String code) {
 }

@@ -4,12 +4,12 @@ import java.time.Instant;
 
 /**
  * Brute-force protection for OTP verification plus single-use tracking of
- * 2FA pending-token ids. In-memory: see TODO for multi-node deployments.
+ * OTP pending-token ids. In-memory: see TODO for multi-node deployments.
  */
 public interface OtpAttemptService {
 
 	/**
-	 * @throws com.example.spring_boot_project_api.exception.TwoFactorLockedException
+	 * @throws com.example.spring_boot_project_api.exception.OtpLockedException
 	 *         if the user is currently locked out after too many failures
 	 */
 	void assertAttemptsAllowed(Long userId);

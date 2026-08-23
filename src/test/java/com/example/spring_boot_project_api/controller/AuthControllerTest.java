@@ -1,15 +1,14 @@
 package com.example.spring_boot_project_api.controller;
 
-import com.example.spring_boot_project_api.config.RestSecurityProblemHandler;
 import com.example.spring_boot_project_api.config.SecurityConfig;
+import com.example.spring_boot_project_api.config.RestSecurityProblemHandler;
 import com.example.spring_boot_project_api.dto.response.AuthResponse;
-import com.example.spring_boot_project_api.dto.response.LoginResponse;
-import com.example.spring_boot_project_api.dto.response.TwoFactorSetupResponse;
-import com.example.spring_boot_project_api.exception.InvalidCredentialsException;
+import com.example.spring_boot_project_api.dto.response.EmailOtpSentResponse;
+import com.example.spring_boot_project_api.dto.response.OtpRequiredResponse;
+import com.example.spring_boot_project_api.dto.response.UserResponse;
 import com.example.spring_boot_project_api.service.AuthService;
-import com.example.spring_boot_project_api.service.JwtService;
-import com.example.spring_boot_project_api.service.TwoFactorAuthService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -17,9 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.Instant;
-import java.util.List;
-
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -28,114 +25,111 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {AuthController.class, TwoFactorAuthController.class})
+/**
+ * Slice test for the public auth surface: register, two-step OTP login, resend, refresh.
+ */
+@WebMvcTest(controllers = AuthController.class)
 @Import({SecurityConfig.class, RestSecurityProblemHandler.class})
 class AuthControllerTest {
+
+	private static final String REGISTER_BODY =
+			"{\"username\":\"alice\",\"email\":\"alice@example.com\",\"password\":\"secret123\"}";
+	private static final String LOGIN_BODY = "{\"username\":\"alice\",\"password\":\"secret123\"}";
 
 	@Autowired
 	private MockMvc mockMvc;
 
 	@MockitoBean
 	private AuthService authService;
+
 	@MockitoBean
-	private TwoFactorAuthService twoFactorAuthService;
-	@MockitoBean
-	private JwtService jwtService;
+	private com.example.spring_boot_project_api.service.JwtService jwtService;
 
-	private static final String LOGIN_BODY = "{\"username\":\"alice\",\"password\":\"secret123\"}";
+	// --- register ---
 
-	private static JwtService.Claims claims(String subject) {
-		return new JwtService.Claims(subject, 1L, "jti", JwtService.TokenType.ACCESS,
-				Instant.now().plus(java.time.Duration.ofMinutes(10)));
+	@Test
+	void register_returns201_andCreatedUser() throws Exception {
+		when(authService.register(any())).thenReturn(new UserResponse(1L, "alice", "alice@example.com"));
+
+		mockMvc.perform(post("/auth/register")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(REGISTER_BODY))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.id").value(1))
+				.andExpect(jsonPath("$.username").value("alice"))
+				.andExpect(jsonPath("$.email").value("alice@example.com"));
+
+		ArgumentCaptor<com.example.spring_boot_project_api.dto.request.RegisterRequest> captor =
+				ArgumentCaptor.forClass(com.example.spring_boot_project_api.dto.request.RegisterRequest.class);
+		verify(authService).register(captor.capture());
+		assertThat(captor.getValue().email()).isEqualTo("alice@example.com");
 	}
 
 	@Test
-	void login_when2faDisabled_returnsTokens() throws Exception {
-		when(authService.login(any())).thenReturn(LoginResponse.authenticated(AuthResponse.builder()
-				.tokenType("Bearer").accessToken("access-token").refreshToken("refresh-token").build()));
+	void register_invalidBody_returns400() throws Exception {
+		mockMvc.perform(post("/auth/register")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"username\":\"a\",\"email\":\"nope\",\"password\":\"x\"}"))
+				.andExpect(status().isBadRequest());
+	}
 
-		mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
+	// --- login step 1 ---
+
+	@Test
+	void login_returnsOtpRequired_withTemporaryToken() throws Exception {
+		when(authService.login(any())).thenReturn(OtpRequiredResponse.builder()
+				.otpRequired(true)
+				.temporaryToken("pending-token")
+				.maskedEmail("a***@example.com")
+				.expiresInSeconds(300)
+				.build());
+
+		mockMvc.perform(post("/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(LOGIN_BODY))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.twoFactorRequired").value(false))
-				.andExpect(jsonPath("$.accessToken").value("access-token"))
-				.andExpect(jsonPath("$.refreshToken").value("refresh-token"));
+				.andExpect(jsonPath("$.otpRequired").value(true))
+				.andExpect(jsonPath("$.temporaryToken").value("pending-token"))
+				.andExpect(jsonPath("$.maskedEmail").value("a***@example.com"));
 	}
 
 	@Test
-	void login_when2faEnabled_returnsTemporaryTokenOnly() throws Exception {
-		when(authService.login(any())).thenReturn(LoginResponse.twoFactorRequired("temp-token"));
+	void login_wrongPassword_returns401() throws Exception {
+		when(authService.login(any()))
+				.thenThrow(new com.example.spring_boot_project_api.exception.InvalidCredentialsException());
 
-		mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.twoFactorRequired").value(true))
-				.andExpect(jsonPath("$.temporaryToken").value("temp-token"))
-				.andExpect(jsonPath("$.accessToken").doesNotExist())
-				.andExpect(jsonPath("$.refreshToken").doesNotExist());
-	}
-
-	@Test
-	void login_withWrongPassword_returns401() throws Exception {
-		when(authService.login(any())).thenThrow(new InvalidCredentialsException());
-
-		mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
+		mockMvc.perform(post("/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(LOGIN_BODY))
 				.andExpect(status().isUnauthorized())
 				.andExpect(jsonPath("$.message").value("Invalid username or password."));
 	}
 
-	@Test
-	void verify_isPublic_andReturnsTokens() throws Exception {
-		when(twoFactorAuthService.verify("temp", "123456")).thenReturn(AuthResponse.builder()
-				.tokenType("Bearer").accessToken("access").refreshToken("refresh").build());
+	// --- otp endpoints ---
 
-		mockMvc.perform(post("/auth/2fa/verify")
+	@Test
+	void otpVerify_correctCode_returnsTokens() throws Exception {
+		when(authService.verifyOtp(eq("pending-token"), eq("123456")))
+				.thenReturn(AuthResponse.builder()
+						.tokenType("Bearer").accessToken("at").refreshToken("rt").build());
+
+		mockMvc.perform(post("/auth/otp/verify")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"temporaryToken\":\"temp\",\"code\":\"123456\"}"))
+						.content("{\"temporaryToken\":\"pending-token\",\"code\":\"123456\"}"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.accessToken").value("access"));
+				.andExpect(jsonPath("$.accessToken").value("at"))
+				.andExpect(jsonPath("$.refreshToken").value("rt"));
 	}
 
 	@Test
-	void verify_withMalformedCode_returns400() throws Exception {
-		mockMvc.perform(post("/auth/2fa/verify")
+	void otpSend_resends_withinCooldownRules() throws Exception {
+		when(authService.resendOtp("pending-token")).thenReturn(EmailOtpSentResponse.builder()
+				.sent(true).maskedEmail("a***@example.com").expiresInSeconds(300).build());
+
+		mockMvc.perform(post("/auth/otp/send")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"temporaryToken\":\"temp\",\"code\":\"12345\"}"))
-				.andExpect(status().isBadRequest());
-	}
-
-	@Test
-	void disable_unauthenticated_returns401() throws Exception {
-		mockMvc.perform(post("/auth/2fa/disable")
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"code\":\"123456\"}"))
-				.andExpect(status().isUnauthorized())
-				.andExpect(jsonPath("$.status").value(401));
-	}
-
-	@Test
-	void setup_withAccessToken_succeeds() throws Exception {
-		when(jwtService.parseAndValidate(eq("good-access-token"), eq(JwtService.TokenType.ACCESS)))
-				.thenReturn(claims("alice"));
-		when(twoFactorAuthService.setup("alice")).thenReturn(TwoFactorSetupResponse.builder()
-				.enabled(false).secret("SECRET234567").otpauthUri("otpauth://totp/x").build());
-
-		mockMvc.perform(post("/auth/2fa/setup")
-						.header("Authorization", "Bearer good-access-token"))
+						.content("{\"temporaryToken\":\"pending-token\"}"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.enabled").value(false))
-				.andExpect(jsonPath("$.secret").value("SECRET234567"))
-				.andExpect(jsonPath("$.otpauthUri").value("otpauth://totp/x"));
-
-		verify(jwtService).parseAndValidate(eq("good-access-token"), eq(JwtService.TokenType.ACCESS));
-
-		org.mockito.Mockito.verify(jwtService)
-				.parseAndValidate(eq("good-access-token"), eq(JwtService.TokenType.ACCESS));
-	}
-
-	@Test
-	void enable_requiresAuthentication() throws Exception {
-		mockMvc.perform(post("/auth/2fa/enable")
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"code\":\"123456\"}"))
-				.andExpect(status().isUnauthorized());
+				.andExpect(jsonPath("$.sent").value(true));
 	}
 }

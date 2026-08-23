@@ -33,16 +33,11 @@ public class User {
 	@Column(nullable = false, unique = true, length = 50)
 	private String username;
 
+	@Column(nullable = false, unique = true, length = 255)
+	private String email;
+
 	@Column(name = "password_hash", nullable = false)
 	private String passwordHash;
-
-	/**
-	 * Master switch for TOTP 2FA. Defaults to {@code false}: existing users keep logging
-	 * in exactly as before and are never auto-enrolled.
-	 */
-	@Column(name = "two_factor_enabled", nullable = false)
-	@Builder.Default
-	private boolean twoFactorEnabled = false;
 
 	@Column(name = "created_at", nullable = false)
 	private LocalDateTime createdAt;

@@ -4,16 +4,18 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
 
-/** TOTP / 2FA behaviour settings. */
-@ConfigurationProperties(prefix = "app.two-factor")
-public record TwoFactorProperties(
+/** Email-OTP login behaviour settings. */
+@ConfigurationProperties(prefix = "app.otp")
+public record OtpProperties(
 		String issuer,
 		int maxFailures,
 		Duration failureWindow,
 		Duration lockDuration,
-		int backupCodeCount) {
+		boolean emailEnabled,
+		Duration codeTtl,
+		Duration resendCooldown) {
 
-	public TwoFactorProperties {
+	public OtpProperties {
 		if (issuer == null || issuer.isBlank()) {
 			issuer = "spring-boot-project-api";
 		}
@@ -26,8 +28,11 @@ public record TwoFactorProperties(
 		if (lockDuration == null || lockDuration.isNegative() || lockDuration.isZero()) {
 			lockDuration = Duration.ofMinutes(15);
 		}
-		if (backupCodeCount <= 0) {
-			backupCodeCount = 10;
+		if (codeTtl == null || codeTtl.isNegative() || codeTtl.isZero()) {
+			codeTtl = Duration.ofMinutes(5);
+		}
+		if (resendCooldown == null || resendCooldown.isNegative()) {
+			resendCooldown = Duration.ofSeconds(60);
 		}
 	}
 }

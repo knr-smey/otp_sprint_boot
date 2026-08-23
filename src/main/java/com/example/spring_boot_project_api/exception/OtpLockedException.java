@@ -1,11 +1,11 @@
 package com.example.spring_boot_project_api.exception;
 
 /** Thrown when OTP verification fails too often; the account is temporarily locked out. */
-public class TwoFactorLockedException extends RuntimeException {
+public class OtpLockedException extends RuntimeException {
 
 	private final long retryAfterSeconds;
 
-	public TwoFactorLockedException(long retryAfterSeconds) {
+	public OtpLockedException(long retryAfterSeconds) {
 		super("Too many failed verification attempts. Try again later.");
 		this.retryAfterSeconds = retryAfterSeconds;
 	}

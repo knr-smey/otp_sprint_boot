@@ -12,7 +12,7 @@ import java.time.Instant;
  * <ul>
  *   <li>{@link TokenType#ACCESS} - normal API credentials.</li>
  *   <li>{@link TokenType#REFRESH} - exchanged for a fresh pair via {@code POST /auth/refresh}.</li>
- *   <li>{@link TokenType#TWO_FACTOR_PENDING} - issued when a correct password belongs to a
+ *   <li>{@link TokenType#OTP_PENDING} - issued when a correct password belongs to a
  *       2FA-enabled account. It carries nothing but subject/user id, expires quickly, and is
  *       rejected by the authentication filter as an API credential; only
  *       {@code POST /auth/2fa/verify} accepts it.</li>
@@ -29,10 +29,10 @@ public interface JwtService {
 
 	AuthResponse issueTokens(User user);
 
-	String generateTwoFactorPendingToken(User user);
+	String generateOtpPendingToken(User user);
 
 	enum TokenType {
-		ACCESS, REFRESH, TWO_FACTOR_PENDING
+		ACCESS, REFRESH, OTP_PENDING
 	}
 
 	record Claims(String subject, Long userId, String jti, TokenType type, Instant expiresAt) {

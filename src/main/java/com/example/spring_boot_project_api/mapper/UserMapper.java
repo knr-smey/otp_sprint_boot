@@ -11,7 +11,7 @@ public class UserMapper {
 		return UserResponse.builder()
 				.id(user.getId())
 				.username(user.getUsername())
-				.twoFactorEnabled(user.isTwoFactorEnabled())
+				.email(user.getEmail())
 				.build();
 	}
 }

@@ -1,7 +1,7 @@
 package com.example.spring_boot_project_api.service.impl;
 
-import com.example.spring_boot_project_api.config.TwoFactorProperties;
-import com.example.spring_boot_project_api.exception.TwoFactorLockedException;
+import com.example.spring_boot_project_api.config.OtpProperties;
+import com.example.spring_boot_project_api.exception.OtpLockedException;
 import com.example.spring_boot_project_api.service.OtpAttemptService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -28,18 +28,18 @@ public class InMemoryOtpAttemptServiceImpl implements OtpAttemptService {
 	private record Attempts(int failures, Instant windowStart, Instant lockedUntil) {
 	}
 
-	private final TwoFactorProperties props;
+	private final OtpProperties props;
 	private final Clock clock;
 	private final Map<Long, Attempts> failuresByUser = new ConcurrentHashMap<>();
 	private final Map<String, Instant> consumedJtis = new ConcurrentHashMap<>();
 
 	/** Primary constructor used by Spring. */
 	@Autowired
-	public InMemoryOtpAttemptServiceImpl(TwoFactorProperties props) {
+	public InMemoryOtpAttemptServiceImpl(OtpProperties props) {
 		this(props, Clock.systemUTC());
 	}
 
-	public InMemoryOtpAttemptServiceImpl(TwoFactorProperties props, Clock clock) {
+	public InMemoryOtpAttemptServiceImpl(OtpProperties props, Clock clock) {
 		this.props = props;
 		this.clock = clock;
 	}
@@ -51,7 +51,7 @@ public class InMemoryOtpAttemptServiceImpl implements OtpAttemptService {
 		if (attempts != null && attempts.lockedUntil() != null) {
 			Instant now = clock.instant();
 			if (attempts.lockedUntil().isAfter(now)) {
-				throw new TwoFactorLockedException(attempts.lockedUntil().getEpochSecond() - now.getEpochSecond());
+				throw new OtpLockedException(attempts.lockedUntil().getEpochSecond() - now.getEpochSecond());
 			}
 			failuresByUser.remove(userId);
 		}

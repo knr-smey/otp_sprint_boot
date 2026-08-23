@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-      MYSQL_DATABASE: spring_boot_project_api
+      MYSQL_DATABASE: "${DB_NAME:-2fadb}"
     ports:
       - "${DB_PORT:-3306}:3306"
     volumes:

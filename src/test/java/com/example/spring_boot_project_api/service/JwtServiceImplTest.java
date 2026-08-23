@@ -31,7 +31,6 @@ class JwtServiceImplTest {
 				.id(42L)
 				.username("alice")
 				.passwordHash("hash")
-				.twoFactorEnabled(false)
 				.build();
 	}
 
@@ -60,22 +59,24 @@ class JwtServiceImplTest {
 	}
 
 	@Test
-	void pendingTwoFactorToken_isShortLived() {
-		String pending = jwtService.generateTwoFactorPendingToken(user);
+	void pendingOtpToken_isShortLived() {
+		String pending = jwtService.generateOtpPendingToken(user);
 
-		JwtService.Claims claims = jwtService.parseAndValidate(pending, JwtService.TokenType.TWO_FACTOR_PENDING);
+		JwtService.Claims claims = jwtService.parseAndValidate(pending, JwtService.TokenType.OTP_PENDING);
 		assertThat(claims.subject()).isEqualTo("alice");
 		assertThat(claims.userId()).isEqualTo(42L);
 		assertThat(claims.expiresAt()).isBefore(Instant.now().plus(Duration.ofMinutes(6)));
 	}
 
 	@Test
-	void expiredToken_isRejected() {
+	void expiredToken_isRejected() throws InterruptedException {
 		JwtProperties shortLived = new JwtProperties(SECRET, "test-issuer",
-				Duration.ofMillis(200), Duration.ofDays(7), Duration.ofMinutes(5));
+				Duration.ofMillis(150), Duration.ofDays(7), Duration.ofMinutes(5));
 		JwtServiceImpl fastExpiring = new JwtServiceImpl(shortLived);
 
 		String token = fastExpiring.issueTokens(user).accessToken();
+		// Deterministic: wait comfortably past the 150ms TTL before validating.
+		Thread.sleep(500);
 		assertThatThrownBy(() -> fastExpiring.parseAndValidate(token, JwtService.TokenType.ACCESS))
 				.isInstanceOf(InvalidTokenException.class);
 	}

@@ -18,6 +18,30 @@ Spring Boot REST API.
 - **Build tool:** Maven (use the `./mvnw` wrapper, not a system-wide `mvn`)
 - **Base package:** `com.example.spring_boot_project_api`
 
+## Authentication: email OTP login
+
+Every login is two-step; there is no password-only session.
+
+1. `POST /auth/register` — create account (`{username, email, password}`) → 201 + user JSON.
+2. `POST /auth/login` — `{username, password}` → 200 with
+   `{otpRequired, temporaryToken, maskedEmail, expiresInSeconds}` and a 6-digit code mailed out.
+3. `POST /auth/otp/verify` — `{temporaryToken, code}` → `{accessToken, refreshToken}`.
+4. `POST /auth/otp/send` — `{temporaryToken}` → resend code (60s cooldown enforced).
+
+Key pieces:
+
+- **Tokens:** HS256 JWTs from `JwtService` with a `typ` claim (`ACCESS`, `REFRESH`, `OTP_PENDING`).
+  The pending token only grants `/auth/otp/*`, is single-use (consumed jti), and expires in 5m.
+- **Brute force:** `OtpAttemptService` counts failed verifications per user (5 failures / 15m window
+  → 15m lockout, HTTP 429 via `OtpLockedException`).
+- **Codes:** stored BCrypt-hashed in `user_email_otp` (one row per user, deleted on success);
+  mail sent by `SmtpOtpMailSender` (Gmail app password via `GMAIL_USERNAME`/`GMAIL_APP_PASSWORD`).
+- **Tunables:** `app.jwt.*` and `app.otp.*` in `application.properties` bind to
+  `config/JwtProperties` and `config/OtpProperties`.
+- **Security:** stateless filter chain in `config/SecurityConfig`; everything except
+  `/auth/**`, `/v3/api-docs/**`, `/swagger-ui/**` requires a valid ACCESS token.
+  Security errors return RFC 7807-style problem bodies via `RestSecurityProblemHandler`.
+
 ## Build, run, test
 
 ```bash

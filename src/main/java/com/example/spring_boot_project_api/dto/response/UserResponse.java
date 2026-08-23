@@ -6,5 +6,5 @@ import lombok.Builder;
 public record UserResponse(
 		Long id,
 		String username,
-		boolean twoFactorEnabled) {
+		String email) {
 }
