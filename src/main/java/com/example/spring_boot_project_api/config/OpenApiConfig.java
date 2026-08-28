@@ -18,7 +18,7 @@ public class OpenApiConfig {
 		return new OpenAPI()
 				.info(new Info()
 						.title("Spring Boot Project API")
-						.description("JWT auth with Google Authenticator TOTP two-factor authentication"))
+						.description("REST API"))
 				.addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME))
 				.components(new Components().addSecuritySchemes(BEARER_SCHEME,
 						new SecurityScheme()
